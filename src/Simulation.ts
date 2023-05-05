@@ -1,4 +1,4 @@
-import { Ref, RefObject } from "react";
+import { RefObject } from "react";
 
 const MAX_DRAW_FPS = 60;
 const MIN_TIME_BETWEEN_DRAW_MS = 1000 / MAX_DRAW_FPS;
