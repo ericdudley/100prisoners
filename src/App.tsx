@@ -35,7 +35,7 @@ const App: React.FC = () => {
   const timescaleRef = useRef(timescale);
 
   useEffect(() => {
-    timescaleRef.current = timescale > 0 && timescale < 25 ? 1 : timescale;
+    timescaleRef.current = timescale > 0 && timescale < 30 ? 1 : timescale;
   }, [timescale]);
 
   useEffect(() => {
