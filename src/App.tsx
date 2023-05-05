@@ -77,20 +77,46 @@ const App: React.FC = () => {
   const handleButtonClick = () => {
     if (running) {
       setRunning(false);
+      cancelRef.current && cancelRef.current();
     } else {
-      setSimulationResult({ success: 0, failure: 0, total: 0 });
       setRunning(true);
     }
   };
 
+  const handleReset = () => {
+    setSimulationResult({ success: 0, failure: 0, total: 0 });
+    setRunning(false);
+    cancelRef.current && cancelRef.current();
+  };
+
   return (
     <div className="App min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-lg shadow-lg">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          The Prisoner's Problem
+      <div className="bg-white p-6 rounded-lg shadow-lg max-w-6xl">
+        <h1 className="text-4xl font-semibold text-gray-900 mb-4">
+          100 Prisoner's Problem
         </h1>
+        <p className="text-gray-700 text-base mb-4">
+          The director of a prison offers 100 death row prisoners, who are
+          numbered from 1 to 100, a last chance. A room contains a cupboard with
+          100 drawers. The director randomly puts one prisoner's number in each
+          closed drawer. The prisoners enter the room, one after another. Each
+          prisoner may open and look into 50 drawers in any order. The drawers
+          are closed again afterwards. If, during this search, every prisoner
+          finds their number in one of the drawers, all prisoners are pardoned.
+          If even one prisoner does not find their number, all prisoners die.
+          Before the first prisoner enters the room, the prisoners may discuss
+          strategy — but may not communicate once the first prisoner enters to
+          look in the drawers. What is the prisoners' best strategy?
+        </p>
         <div className="flex items-center space-x-4">
+          <label
+            htmlFor="numPrisoners"
+            className="text-sm font-medium text-gray-700"
+          >
+            Number of prisoners:
+          </label>
           <input
+            id="numPrisoners"
             type="number"
             min="1"
             max="100"
@@ -103,6 +129,12 @@ const App: React.FC = () => {
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
           >
             {running ? "Stop" : "Start"}
+          </button>
+          <button
+            onClick={handleReset}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Reset
           </button>
         </div>
         <div className="mt-4">
@@ -141,7 +173,7 @@ const App: React.FC = () => {
             : 0}
           %
         </div>
-        <div className="mt-4">
+        <div className="mt-4 mx-auto flex justify-center">
           <canvas
             ref={canvasRef}
             width={900}

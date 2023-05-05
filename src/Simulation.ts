@@ -1,4 +1,16 @@
 import { RefObject } from "react";
+import prisoner from "../public/prisoner.png";
+import prisonerPrison from "../public/prisoner_prison.png";
+import prisonerFree from "../public/prisoner_free.png";
+
+const IMG_PRISONER = new Image();
+IMG_PRISONER.src = prisoner;
+
+const IMG_PRISONER_PRISON = new Image();
+IMG_PRISONER_PRISON.src = prisonerPrison;
+
+const IMG_PRISONER_FREE = new Image();
+IMG_PRISONER_FREE.src = prisonerFree;
 
 const MAX_DRAW_FPS = 60;
 const MIN_TIME_BETWEEN_DRAW_MS = 1000 / MAX_DRAW_FPS;
@@ -115,7 +127,10 @@ class Simulation {
     const gridSize = Math.ceil(Math.sqrt(this.numPrisoners));
     const boxWidth = ((this.canvas.width / 3) * 1) / gridSize;
     const boxHeight = boxWidth;
-    const prisonerRadius = boxWidth / 3;
+    const prisonerWidth = boxWidth * 0.9;
+    const prisonerHeight = prisonerWidth;
+    const prisonerOffsetX = boxWidth / 2 - prisonerWidth / 2;
+    const prisonerOffsetY = boxHeight / 2 - prisonerHeight / 2;
 
     // Draw boxes
     this.boxes.forEach((boxNumber, index) => {
@@ -158,21 +173,22 @@ class Simulation {
 
     this.prisoners.forEach((prisoner, index) => {
       const { row, col } = this.getGridPosition(index, gridSize);
-      const x = col * boxWidth + boxWidth / 2;
-      const y = row * boxHeight + boxHeight / 2;
+      const x = col * boxWidth;
+      const y = row * boxHeight;
 
       if (prisoner.foundNumber) {
         // Render prisoner in third room
-        this.ctx.beginPath();
-        this.ctx.arc(
-          x + (this.canvas.width * 2) / 3,
-          y,
-          prisonerRadius,
+        this.ctx.drawImage(
+          IMG_PRISONER_FREE,
           0,
-          Math.PI * 2
+          0,
+          IMG_PRISONER_PRISON.width,
+          IMG_PRISONER_PRISON.height,
+          x + prisonerOffsetX + (this.canvas.width * 2) / 3,
+          y + prisonerOffsetY,
+          prisonerWidth,
+          prisonerHeight
         );
-        this.ctx.fillStyle = "orange";
-        this.ctx.fill();
       } else if (prisoner.isLooking) {
         // Render prisoner on top of the box
         const boxIndex = prisoner.seenNumbers[prisoner.seenNumbers.length - 1];
@@ -180,16 +196,17 @@ class Simulation {
         const boxX = this.canvas.width / 3 + boxPosition.col * boxWidth;
         const boxY = boxPosition.row * boxHeight;
 
-        this.ctx.beginPath();
-        this.ctx.arc(
-          boxX + boxWidth / 2,
-          boxY + boxHeight / 2,
-          prisonerRadius,
+        this.ctx.drawImage(
+          IMG_PRISONER,
           0,
-          Math.PI * 2
+          0,
+          IMG_PRISONER_PRISON.width,
+          IMG_PRISONER_PRISON.height,
+          boxX + prisonerOffsetX,
+          boxY + prisonerOffsetY,
+          prisonerWidth,
+          prisonerHeight
         );
-        this.ctx.fillStyle = "orange";
-        this.ctx.fill();
 
         this.drawNumberInBox(
           boxX,
@@ -199,11 +216,17 @@ class Simulation {
           this.boxes[boxIndex]
         );
       } else {
-        this.ctx.beginPath();
-        // Render prisoner in the first room
-        this.ctx.arc(x, y, prisonerRadius, 0, Math.PI * 2);
-        this.ctx.fillStyle = "orange";
-        this.ctx.fill();
+        this.ctx.drawImage(
+          IMG_PRISONER_PRISON,
+          0,
+          0,
+          IMG_PRISONER_PRISON.width,
+          IMG_PRISONER_PRISON.height,
+          x + prisonerOffsetX,
+          y + prisonerOffsetY,
+          prisonerWidth,
+          prisonerHeight
+        );
       }
     });
   }
