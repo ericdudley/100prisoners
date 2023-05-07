@@ -1,10 +1,12 @@
 import { RefObject } from "react";
 import {
+  CYCLE_ID_TO_COLOR,
   IMG_PRISONER,
   IMG_PRISONER_FREE,
   IMG_PRISONER_PRISON,
   MIN_TIME_BETWEEN_DRAW_MS,
 } from "./constants";
+import { BoxCycles, getBoxCycles } from "./helpers";
 import { Box, Prisoner, Strategy } from "./models";
 import { STRATEGY_FUNCTIONS } from "./strategies";
 
@@ -23,11 +25,13 @@ export class Simulation {
   private timeoutId: number | undefined;
   private isPaused: boolean = false;
   private isCancelled: boolean = false;
-  private tickMs: RefObject<number>;
+  private tickMsRef: RefObject<number>;
+  private showCyclesRef: RefObject<boolean>;
 
   private strategy: Strategy;
   private prisoners: Prisoner[];
   private boxes: Box[];
+  private boxCycles: BoxCycles;
   private tickCount: number = 0;
 
   private resultCallback: (result: boolean | undefined) => void = () => {};
@@ -38,7 +42,8 @@ export class Simulation {
     prisonCanvas: HTMLCanvasElement,
     lookingCanvas: HTMLCanvasElement,
     freeCanvas: HTMLCanvasElement,
-    timescaleRef: RefObject<number>
+    timescaleRef: RefObject<number>,
+    showCyclesRef: RefObject<boolean>
   ) {
     this.prisonCanvas = prisonCanvas;
     this.prisonCtx = prisonCanvas.getContext("2d")!;
@@ -48,7 +53,8 @@ export class Simulation {
     this.freeCtx = freeCanvas.getContext("2d")!;
 
     this.timeoutId = undefined;
-    this.tickMs = timescaleRef;
+    this.tickMsRef = timescaleRef;
+    this.showCyclesRef = showCyclesRef;
 
     this.strategy = strategy;
 
@@ -64,6 +70,7 @@ export class Simulation {
       [boxes[i], boxes[j]] = [boxes[j], boxes[i]];
     }
     this.boxes = boxes.map((boxNumber, boxIdx) => new Box(boxIdx, boxNumber));
+    this.boxCycles = getBoxCycles(this.boxes);
   }
 
   private getGridPosition(index: number, gridSize: number) {
@@ -188,12 +195,19 @@ export class Simulation {
 
     // Draw boxes
     this.boxes.forEach((box) => {
-      const { row, col } = this.getGridPosition(box.id, gridSize);
+      const { cycleColor, cycleBoxId } = this.boxCycles[box.id];
+      const { row, col } = this.getGridPosition(
+        this.showCyclesRef.current ? cycleBoxId : box.id,
+        gridSize
+      );
       const x = col * boxWidth;
       const y = row * boxHeight;
 
-      const fillStyle = box.isSeen ? "#321900" : "#964B00";
-      const numberToDraw = box.isSeen ? box.number : box.id;
+      const fillStyle = box.isSeen
+        ? "#321900"
+        : this.showCyclesRef.current
+        ? cycleColor
+        : CYCLE_ID_TO_COLOR[0];
 
       this.lookingCtx.fillStyle = fillStyle;
       this.lookingCtx.strokeStyle = "black";
@@ -207,7 +221,7 @@ export class Simulation {
         y,
         boxWidth,
         boxHeight,
-        numberToDraw
+        box.number
       );
     });
 
@@ -223,8 +237,13 @@ export class Simulation {
         );
 
         drawPositions.forEach((box, seenIdx) => {
+          const { cycleBoxId } = this.boxCycles[box.id];
+
           // Render prisoner on top of the box
-          const boxPosition = this.getGridPosition(box.id, gridSize);
+          const boxPosition = this.getGridPosition(
+            this.showCyclesRef.current ? cycleBoxId : box.id,
+            gridSize
+          );
           const boxX = boxPosition.col * boxWidth;
           const boxY = boxPosition.row * boxHeight;
 
@@ -298,7 +317,7 @@ export class Simulation {
       });
   }
 
-  private draw() {
+  public draw() {
     this.drawPrisonCanvas();
     this.drawLookingCanvas();
     this.drawFreeCanvas();
@@ -372,19 +391,19 @@ export class Simulation {
     } else if (this.isCancelled) {
       this.resultCallback(undefined);
     } else if (!this.isPaused) {
-      if (this.tickMs.current == null) {
+      if (this.tickMsRef.current == null) {
         return;
       }
       // Render with setTimeout, when the tick is greater than 0.
       // If the tick is 0, then render for the first 50 frames every 10th frame, then every 25th frame after.
       if (
-        this.tickMs.current > 0 ||
+        this.tickMsRef.current > 0 ||
         // The browser crashes if we use the Promise.resolve method too much, so we have to tune it down.
         this.tickCount %
           (this.prisoners.length < 10 ? 2 : this.prisoners.length * 3) ===
           0
       ) {
-        setTimeout(() => this.animate(), this.tickMs.current);
+        setTimeout(() => this.animate(), this.tickMsRef.current);
       } else {
         // If tick is 0, Promise.resolve will run VERY fast, but it will prevent draws from rendering to the screen.
         Promise.resolve(1).then(() => this.animate());
@@ -426,7 +445,8 @@ export const runSimulation = (
   prisonCanvas: HTMLCanvasElement,
   lookingCanvas: HTMLCanvasElement,
   freeCanvas: HTMLCanvasElement,
-  timescaleRef: RefObject<number>
+  tickMsRef: RefObject<number>,
+  showCyclesRef: RefObject<boolean>
 ): { result: Promise<boolean | null | undefined>; simulation: Simulation } => {
   const simulation = new Simulation(
     numPrisoners,
@@ -434,7 +454,8 @@ export const runSimulation = (
     prisonCanvas,
     lookingCanvas,
     freeCanvas,
-    timescaleRef
+    tickMsRef,
+    showCyclesRef
   );
   return {
     result: simulation.run(),

@@ -28,6 +28,10 @@ const App: React.FC = () => {
     flooredTimescale > 0 && flooredTimescale < 10 ? 1 : flooredTimescale;
   timescaleRef.current = transformedTimescale;
 
+  const [showCycles, setShowCycles] = useState(false);
+  const showCyclesRef = useRef(showCycles);
+  showCyclesRef.current = showCycles;
+
   return (
     <div className="App min-h-screen w-full bg-gray-100 flex justify-center">
       <div className="bg-white p-6 shadow-lg max-w-6xl">
@@ -52,7 +56,6 @@ const App: React.FC = () => {
           Read more on Wikipedia
         </a>
         <Settings
-        
           className="mt-4"
           onStart={async (strategy, prisonerCount) => {
             console.log("starting");
@@ -66,7 +69,8 @@ const App: React.FC = () => {
                 prisonCanvasRef.current!,
                 lookingCanvasRef.current!,
                 freeCanvasRef.current!,
-                timescaleRef
+                timescaleRef,
+                showCyclesRef
               );
               simulationRef.current = simulation;
               if (isPausedRef.current) {
@@ -110,6 +114,29 @@ const App: React.FC = () => {
           }}
           valueLabel={`${transformedTimescale}`}
         />
+        <div className="flex flex-col gap-2">
+          <div className="mt-4 flex flex-row items-center gap-2">
+            <input
+              type="checkbox"
+              id="show-cycles"
+              checked={showCycles}
+              onChange={(e) => {
+                setShowCycles(e.target.checked);
+                showCyclesRef.current = e.target.checked;
+
+                if (simulationRef.current != null) {
+                  simulationRef.current.draw();
+                }
+              }}
+            />
+            <label htmlFor="show-cycles">Show cycles</label>
+          </div>
+          <p className="text-gray-700 text-sm">
+            Draw the drawers grouped by cycles. If prisoners use the Optimal
+            strategy, they will only fail if there is a cycle longer than the
+            number of drawers they are allowed to search.
+          </p>
+        </div>
         <SimulationResultView
           simulationResult={simulationResult}
           className="mt-4"
