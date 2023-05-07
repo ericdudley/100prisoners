@@ -55,10 +55,14 @@ const App: React.FC = () => {
         >
           Read more on Wikipedia
         </a>
+        <SimulationResultView
+          simulationResult={simulationResult}
+          className="mt-4"
+        />
         <Settings
           className="mt-4"
           onStart={async (strategy, prisonerCount) => {
-            console.log("starting");
+            setSimulationResult({ success: 0, failure: 0, total: 0 });
             isRunningRef.current = true;
             isPausedRef.current = false;
 
@@ -98,11 +102,14 @@ const App: React.FC = () => {
             isPausedRef.current = false;
             simulationRef.current?.resume();
           }}
+          onStep={() => {
+            simulationRef.current?.step();
+          }}
           onReset={() => {
-            setSimulationResult({ success: 0, failure: 0, total: 0 });
             isRunningRef.current = false;
             isPausedRef.current = false;
             simulationRef.current?.cancel();
+            simulationRef.current = null;
           }}
         />
 
@@ -137,10 +144,6 @@ const App: React.FC = () => {
             number of drawers they are allowed to search.
           </p>
         </div>
-        <SimulationResultView
-          simulationResult={simulationResult}
-          className="mt-4"
-        />
         <div className="mt-4 w-full mx-auto flex flex-row gap-2 justify-evenly flex-wrap">
           <Canvas title="Prison" canvasRef={prisonCanvasRef} />
           <Canvas title="Cupboard" canvasRef={lookingCanvasRef} />

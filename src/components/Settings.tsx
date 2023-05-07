@@ -1,6 +1,6 @@
 import cx from "classnames";
 import React, { useState } from "react";
-import { FaPause, FaPlay } from "react-icons/fa";
+import { FaPause, FaPlay, FaStepForward } from "react-icons/fa";
 import { MAX_PRISONERS } from "../constants";
 import { Strategy } from "../models";
 import { STRATEGY_OPTIONS } from "../strategies";
@@ -10,12 +10,14 @@ export default function Settings({
   onReset,
   onResume,
   onStart,
+  onStep,
   className,
 }: {
   onStart: (strategy: Strategy, prisonerCount: number) => void;
   onResume: () => void;
   onPause: () => void;
   onReset: () => void;
+  onStep: () => void;
   className?: string;
 }): React.ReactElement {
   const [prisonerCount, setPrisonerCount] = useState(100);
@@ -124,12 +126,32 @@ export default function Settings({
             )}
           </button>
           {isRunning && (
-            <button
-              onClick={onClickResetButton}
-              className="bg-gray-400 hover:bg-gray-600 text-white py-2 px-4 rounded"
-            >
-              Reset
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  if (!isPaused) {
+                    setIsPaused(true);
+                    onPause();
+                  }
+                  onStep();
+                }}
+                className={cx(
+                  "rounded py-2 px-4 flex gap-2 items-center",
+                  "bg-blue-500 hover:bg-blue-700 text-white"
+                )}
+                disabled={!isRunning}
+              >
+                <span>Step</span>
+                <FaStepForward />
+              </button>
+
+              <button
+                onClick={onClickResetButton}
+                className="bg-red-400 hover:bg-red-600 text-white py-2 px-4 rounded"
+              >
+                Reset
+              </button>
+            </>
           )}
         </div>
       </div>

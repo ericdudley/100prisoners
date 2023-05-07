@@ -25,6 +25,7 @@ export class Simulation {
   private timeoutId: number | undefined;
   private isPaused: boolean = false;
   private isCancelled: boolean = false;
+  private isStepping: boolean = false;
   private tickMsRef: RefObject<number>;
   private showCyclesRef: RefObject<boolean>;
 
@@ -366,9 +367,11 @@ export class Simulation {
   lastDraw = 0;
 
   private async animate() {
-    if (this.isPaused || this.isCancelled) {
+    if ((this.isPaused && !this.isStepping) || this.isCancelled) {
       return;
     }
+    this.isStepping = false;
+
     this.tickCount += 1;
     const now = performance.now();
     const elapsed = now - this.lastDraw;
@@ -429,6 +432,12 @@ export class Simulation {
     clearCtx(this.prisonCtx);
     clearCtx(this.lookingCtx);
     clearCtx(this.freeCtx);
+  }
+
+  public step() {
+    this.pause();
+    this.isStepping = true;
+    this.animate();
   }
 
   async run(): Promise<boolean | undefined> {
