@@ -15,33 +15,34 @@ IMG_PRISONER_FREE.src = prisonerFree;
 const MAX_DRAW_FPS = 60;
 const MIN_TIME_BETWEEN_DRAW_MS = 1000 / MAX_DRAW_FPS;
 
+function clearCtx(ctx: CanvasRenderingContext2D) {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
 class Prisoner {
   id: number;
-  foundNumber: boolean;
-  isLooking: boolean;
   seenNumbers: number[];
-  isFailed: boolean;
+  status: "prison" | "looking" | "free" | "failed";
 
   constructor(id: number) {
     this.id = id;
-    this.foundNumber = false;
-    this.isLooking = false;
     this.seenNumbers = [];
-    this.isFailed = false;
-  }
-
-  setFoundNumber(found: boolean) {
-    this.foundNumber = found;
+    this.status = "prison";
   }
 }
 
-class Simulation {
-  private numPrisoners: number;
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+export class Simulation {
+  private prisonCanvas: HTMLCanvasElement;
+  private prisonCtx: CanvasRenderingContext2D;
+  private lookingCanvas: HTMLCanvasElement;
+  private lookingCtx: CanvasRenderingContext2D;
+  private freeCanvas: HTMLCanvasElement;
+  private freeCtx: CanvasRenderingContext2D;
+
   private animationFrameId: number | null;
-  private cancelled: boolean = false;
-  private timescaleRef: RefObject<number>;
+  private isPaused: boolean = false;
+  private isCancelled: boolean = false;
+  private tickMs: RefObject<number>;
 
   private prisoners: Prisoner[];
   private boxes: number[];
@@ -50,35 +51,32 @@ class Simulation {
 
   constructor(
     numPrisoners: number,
-    canvas: HTMLCanvasElement,
+    prisonCanvas: HTMLCanvasElement,
+    lookingCanvas: HTMLCanvasElement,
+    freeCanvas: HTMLCanvasElement,
     timescaleRef: RefObject<number>
   ) {
-    this.numPrisoners = numPrisoners;
-    this.canvas = canvas;
-    this.ctx = this.canvas.getContext("2d")!;
+    this.prisonCanvas = prisonCanvas;
+    this.prisonCtx = prisonCanvas.getContext("2d")!;
+    this.lookingCanvas = lookingCanvas;
+    this.lookingCtx = lookingCanvas.getContext("2d")!;
+    this.freeCanvas = freeCanvas;
+    this.freeCtx = freeCanvas.getContext("2d")!;
+
     this.animationFrameId = null;
-    this.prisoners = this.createPrisoners();
-    this.boxes = this.shuffle([...Array(numPrisoners).keys()]);
-    this.timescaleRef = timescaleRef;
-  }
+    this.tickMs = timescaleRef;
 
-  createPrisoners(): Prisoner[] {
-    const prisoners: Prisoner[] = [];
+    // Initialize prisoners with id equal to index
+    this.prisoners = Array(numPrisoners)
+      .fill(0)
+      .map((_, idx) => new Prisoner(idx));
 
-    for (let i = 0; i < this.numPrisoners; i++) {
-      prisoners.push(new Prisoner(i));
-    }
-
-    return prisoners;
-  }
-
-  shuffle(array: number[]): number[] {
-    for (let i = array.length - 1; i > 0; i--) {
+    // Initialize boxes and shuffle
+    this.boxes = [...Array(numPrisoners).keys()];
+    for (let i = this.boxes.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
+      [this.boxes[i], this.boxes[j]] = [this.boxes[j], this.boxes[i]];
     }
-
-    return array;
   }
 
   private getGridPosition(index: number, gridSize: number) {
@@ -88,58 +86,127 @@ class Simulation {
   }
 
   private drawNumberInBox(
+    ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     boxWidth: number,
     boxHeight: number,
     number: number
   ) {
-    this.ctx.fillStyle = "white";
-    this.ctx.font = "12px Arial";
+    ctx.fillStyle = "white";
+    ctx.font = "12px Arial";
 
-    const { width } = this.ctx.measureText(number.toString());
+    const { width } = ctx.measureText(number.toString());
 
-    this.ctx.fillText(
+    ctx.fillText(
       number == null ? "?" : (number + 1).toString(),
       x + boxWidth / 2 - width / 2,
       y + boxHeight / 2 + 4
     );
   }
 
-  private draw() {
-    if (!this.ctx || !this.canvas) {
-      return;
-    }
-
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Draw rooms
-    for (let i = 0; i < 3; i++) {
-      this.ctx.strokeRect(
-        i * (this.canvas.width / 3),
-        0,
-        this.canvas.width / 3,
-        this.canvas.height
-      );
-    }
-
-    // Draw prisoners and boxes
-    const gridSize = Math.ceil(Math.sqrt(this.numPrisoners));
-    const boxWidth = ((this.canvas.width / 3) * 1) / gridSize;
+  private getSize(canvas: HTMLCanvasElement) {
+    const gridSize = Math.ceil(Math.sqrt(this.prisoners.length));
+    const boxWidth = canvas.width / gridSize;
     const boxHeight = boxWidth;
     const prisonerWidth = boxWidth * 0.9;
     const prisonerHeight = prisonerWidth;
     const prisonerOffsetX = boxWidth / 2 - prisonerWidth / 2;
     const prisonerOffsetY = boxHeight / 2 - prisonerHeight / 2;
 
+    return {
+      gridSize,
+      boxWidth,
+      boxHeight,
+      prisonerWidth,
+      prisonerHeight,
+      prisonerOffsetX,
+      prisonerOffsetY,
+    };
+  }
+
+  private drawPrisonCanvas() {
+    if (!this.prisonCtx || !this.prisonCanvas) {
+      return;
+    }
+
+    clearCtx(this.prisonCtx);
+
+    // Draw room
+    this.prisonCtx.strokeStyle = "black";
+    this.prisonCtx.strokeRect(
+      0,
+      0,
+      this.prisonCanvas.width,
+      this.prisonCanvas.height
+    );
+
+    const {
+      gridSize,
+      boxWidth,
+      boxHeight,
+      prisonerWidth,
+      prisonerHeight,
+      prisonerOffsetX,
+      prisonerOffsetY,
+    } = this.getSize(this.prisonCanvas);
+
+    // Draw prisoners
+    this.prisoners
+      .filter((prisoner) => prisoner.status === "prison")
+      .forEach((prisoner) => {
+        const { row, col } = this.getGridPosition(prisoner.id, gridSize);
+        const x = col * boxWidth;
+        const y = row * boxHeight;
+
+        this.prisonCtx.drawImage(
+          IMG_PRISONER_PRISON,
+          0,
+          0,
+          IMG_PRISONER_PRISON.width,
+          IMG_PRISONER_PRISON.height,
+          x + prisonerOffsetX,
+          y + prisonerOffsetY,
+          prisonerWidth,
+          prisonerHeight
+        );
+      });
+  }
+
+  private drawLookingCanvas() {
+    if (!this.lookingCtx || !this.prisonCanvas) {
+      return;
+    }
+
+    clearCtx(this.lookingCtx);
+
+    // Draw room
+    this.lookingCtx.strokeStyle = "black";
+    this.lookingCtx.strokeRect(
+      0,
+      0,
+      this.lookingCanvas.width,
+      this.lookingCanvas.height
+    );
+
+    const {
+      gridSize,
+      boxWidth,
+      boxHeight,
+      prisonerWidth,
+      prisonerHeight,
+      prisonerOffsetX,
+      prisonerOffsetY,
+    } = this.getSize(this.lookingCanvas);
+
     // Draw boxes
     this.boxes.forEach((boxNumber, index) => {
       const { row, col } = this.getGridPosition(index, gridSize);
-      const x = this.canvas.width / 3 + col * boxWidth;
+      const x = col * boxWidth;
       const y = row * boxHeight;
 
       const lookingPrisoner = this.prisoners.find(
-        (prisoner) => prisoner.isLooking
+        (prisoner) => prisoner.status === "looking"
       );
 
       let fillStyle = "#964B00";
@@ -162,80 +229,122 @@ class Simulation {
         }
       }
 
-      this.ctx.fillStyle = fillStyle;
-      this.ctx.strokeStyle = strokeStyle;
-      this.ctx.fillRect(x, y, boxWidth, boxHeight);
-      this.ctx.strokeRect(x, y, boxWidth, boxHeight);
+      this.lookingCtx.fillStyle = fillStyle;
+      this.lookingCtx.strokeStyle = strokeStyle;
+      this.lookingCtx.fillRect(x, y, boxWidth, boxHeight);
+      this.lookingCtx.strokeRect(x, y, boxWidth, boxHeight);
 
       // Draw box number
-      this.drawNumberInBox(x, y, boxWidth, boxHeight, numberToDraw);
+      this.drawNumberInBox(
+        this.lookingCtx,
+        x,
+        y,
+        boxWidth,
+        boxHeight,
+        numberToDraw
+      );
     });
 
-    this.prisoners.forEach((prisoner, index) => {
-      const { row, col } = this.getGridPosition(index, gridSize);
-      const x = col * boxWidth;
-      const y = row * boxHeight;
+    // Draw prisoners
+    this.prisoners
+      .filter((prisoner) => prisoner.status === "looking")
+      .forEach((prisoner) => {
+        const GHOST_LENGTH = 10;
+        const drawPositions = prisoner.seenNumbers.slice(
+          prisoner.seenNumbers.length >= GHOST_LENGTH
+            ? prisoner.seenNumbers.length - GHOST_LENGTH
+            : 0
+        );
 
-      if (prisoner.foundNumber) {
-        // Render prisoner in third room
-        this.ctx.drawImage(
+        drawPositions.forEach((boxIndex, seenIdx) => {
+          // Render prisoner on top of the box
+          const boxPosition = this.getGridPosition(boxIndex, gridSize);
+          const boxX = boxPosition.col * boxWidth;
+          const boxY = boxPosition.row * boxHeight;
+
+          const seenRatio =
+            (drawPositions.length < GHOST_LENGTH
+              ? seenIdx + (GHOST_LENGTH - drawPositions.length)
+              : seenIdx) / GHOST_LENGTH;
+          const alphaValue = seenRatio * seenRatio;
+          this.lookingCtx.globalAlpha = alphaValue;
+          this.lookingCtx.drawImage(
+            IMG_PRISONER,
+            0,
+            0,
+            IMG_PRISONER_PRISON.width,
+            IMG_PRISONER_PRISON.height,
+            boxX + prisonerOffsetX,
+            boxY + prisonerOffsetY,
+            prisonerWidth,
+            prisonerHeight
+          );
+          this.lookingCtx.globalAlpha = 1;
+        });
+      });
+  }
+
+  private drawFreeCanvas() {
+    if (!this.freeCtx || !this.freeCanvas) {
+      return;
+    }
+
+    clearCtx(this.freeCtx);
+
+    // Draw room
+    this.freeCtx.strokeStyle = "black";
+    this.freeCtx.strokeRect(
+      0,
+      0,
+      this.freeCanvas.width,
+      this.freeCanvas.height
+    );
+
+    const {
+      gridSize,
+      boxWidth,
+      boxHeight,
+      prisonerWidth,
+      prisonerHeight,
+      prisonerOffsetX,
+      prisonerOffsetY,
+    } = this.getSize(this.freeCanvas);
+
+    // Draw prisoners
+    this.prisoners
+      .filter((prisoner) => prisoner.status === "free")
+      .forEach((prisoner) => {
+        const { row, col } = this.getGridPosition(prisoner.id, gridSize);
+        const x = col * boxWidth;
+        const y = row * boxHeight;
+
+        this.freeCtx.drawImage(
           IMG_PRISONER_FREE,
           0,
           0,
-          IMG_PRISONER_PRISON.width,
-          IMG_PRISONER_PRISON.height,
-          x + prisonerOffsetX + (this.canvas.width * 2) / 3,
-          y + prisonerOffsetY,
-          prisonerWidth,
-          prisonerHeight
-        );
-      } else if (prisoner.isLooking) {
-        // Render prisoner on top of the box
-        const boxIndex = prisoner.seenNumbers[prisoner.seenNumbers.length - 1];
-        const boxPosition = this.getGridPosition(boxIndex, gridSize);
-        const boxX = this.canvas.width / 3 + boxPosition.col * boxWidth;
-        const boxY = boxPosition.row * boxHeight;
-
-        this.ctx.drawImage(
-          IMG_PRISONER,
-          0,
-          0,
-          IMG_PRISONER_PRISON.width,
-          IMG_PRISONER_PRISON.height,
-          boxX + prisonerOffsetX,
-          boxY + prisonerOffsetY,
-          prisonerWidth,
-          prisonerHeight
-        );
-
-        this.drawNumberInBox(
-          boxX,
-          boxY,
-          boxWidth,
-          boxHeight,
-          this.boxes[boxIndex]
-        );
-      } else {
-        this.ctx.drawImage(
-          IMG_PRISONER_PRISON,
-          0,
-          0,
-          IMG_PRISONER_PRISON.width,
-          IMG_PRISONER_PRISON.height,
+          IMG_PRISONER_FREE.width,
+          IMG_PRISONER_FREE.height,
           x + prisonerOffsetX,
           y + prisonerOffsetY,
           prisonerWidth,
           prisonerHeight
         );
-      }
-    });
+      });
+  }
+
+  private draw() {
+    this.drawPrisonCanvas();
+    this.drawLookingCanvas();
+    this.drawFreeCanvas();
   }
 
   private update() {
-    let lookingPrisoner = this.prisoners.find((prisoner) => prisoner.isLooking);
+    let lookingPrisoner = this.prisoners.find(
+      (prisoner) => prisoner.status === "looking"
+    );
     if (!lookingPrisoner) {
       lookingPrisoner = this.prisoners.find(
-        (prisoner) => !prisoner.foundNumber
+        (prisoner) => prisoner.status === "prison"
       );
     }
 
@@ -243,7 +352,7 @@ class Simulation {
       return;
     }
 
-    lookingPrisoner.isLooking = true;
+    lookingPrisoner.status = "looking";
 
     let firstTick = false;
     if (lookingPrisoner.seenNumbers.length === 0) {
@@ -254,24 +363,25 @@ class Simulation {
     const lastSeenNumber =
       lookingPrisoner.seenNumbers[lookingPrisoner.seenNumbers.length - 1];
 
-    const nextBoxNumber = this.boxes[lastSeenNumber];
+    const nextBoxesNumber = this.boxes[lastSeenNumber];
 
-    if (nextBoxNumber === lookingPrisoner.id) {
-      lookingPrisoner.isLooking = false;
-      lookingPrisoner.setFoundNumber(true);
-    } else if (lookingPrisoner.seenNumbers.length === this.numPrisoners / 2) {
+    if (nextBoxesNumber === lookingPrisoner.id) {
+      lookingPrisoner.status = "free";
+    } else if (
+      lookingPrisoner.seenNumbers.length ===
+      this.prisoners.length / 2
+    ) {
       // Maximum allowed number of box openings reached
-      lookingPrisoner.isLooking = false;
-      lookingPrisoner.isFailed = true;
+      lookingPrisoner.status = "failed";
     } else if (!firstTick) {
-      lookingPrisoner.seenNumbers.push(nextBoxNumber);
+      lookingPrisoner.seenNumbers.push(nextBoxesNumber);
     }
   }
 
   lastDraw = 0;
 
   private async animate() {
-    if (this.cancelled) {
+    if (this.isPaused) {
       return;
     }
     this.tickCount += 1;
@@ -285,38 +395,56 @@ class Simulation {
     }
 
     const isSuccessful = this.prisoners.every(
-      (prisoner) => prisoner.foundNumber
+      (prisoner) => prisoner.status === "free"
     );
-    const isFailed = this.prisoners.some((prisoner) => prisoner.isFailed);
+    const isFailed = this.prisoners.some(
+      (prisoner) => prisoner.status === "failed"
+    );
 
     if (isSuccessful || isFailed) {
-      this.cancel();
       this.result = isSuccessful && !isFailed;
-    } else if (!this.cancelled) {
-      if (this.timescaleRef.current == null) {
+    } else if (!this.isPaused && !this.isCancelled) {
+      if (this.tickMs.current == null) {
         return;
       }
-      if (
-        this.timescaleRef.current > 0 ||
-        (this.tickCount < 50 && this.tickCount % 10 === 0) ||
-        this.tickCount % 25 === 0
-      ) {
-        setTimeout(() => this.animate(), this.timescaleRef.current);
+      // Render with setTimeout, when the tick is greater than 0.
+      // If the tick is 0, then render for the first 50 frames every 10th frame, then every 25th frame after.
+      if (this.tickMs.current > 0 || this.tickCount % 100 === 0) {
+        setTimeout(() => this.animate(), this.tickMs.current);
       } else {
+        // If tick is 0, Promise.resolve will run VERY fast, but it will prevent draws from rendering to the screen.
         Promise.resolve(1).then(() => this.animate());
       }
-      // this.animationFrameId = requestAnimationFrame(() => this.animate());
     }
+  }
+
+  public resume() {
+    if (this.animationFrameId) {
+      clearTimeout(this.animationFrameId);
+    }
+    this.isPaused = false;
+    this.animate();
+  }
+
+  public pause() {
+    if (this.animationFrameId) {
+      clearTimeout(this.animationFrameId);
+    }
+    this.isPaused = true;
   }
 
   public cancel() {
     if (this.animationFrameId) {
       clearTimeout(this.animationFrameId);
     }
-    this.cancelled = true;
+    this.isCancelled = true;
+
+    clearCtx(this.prisonCtx);
+    clearCtx(this.lookingCtx);
+    clearCtx(this.freeCtx);
   }
 
-  async run(): Promise<boolean> {
+  async run(): Promise<boolean | undefined> {
     return new Promise((resolve) => {
       this.animate();
 
@@ -326,6 +454,9 @@ class Simulation {
         if (this.result != null) {
           clearInterval(interval);
           resolve(this.result);
+        } else if (this.isCancelled) {
+          clearInterval(interval);
+          resolve(undefined);
         }
       }, 100);
     });
@@ -334,14 +465,20 @@ class Simulation {
 
 export const runSimulation = (
   numPrisoners: number,
-  canvas: HTMLCanvasElement,
+  prisonCanvas: HTMLCanvasElement,
+  lookingCanvas: HTMLCanvasElement,
+  freeCanvas: HTMLCanvasElement,
   timescaleRef: RefObject<number>
-): { result: Promise<boolean>; cancel: () => void } => {
-  const simulation = new Simulation(numPrisoners, canvas, timescaleRef);
+): { result: Promise<boolean>; simulation: Simulation } => {
+  const simulation = new Simulation(
+    numPrisoners,
+    prisonCanvas,
+    lookingCanvas,
+    freeCanvas,
+    timescaleRef
+  );
   return {
     result: simulation.run(),
-    cancel: () => {
-      simulation.cancel();
-    },
+    simulation,
   };
 };
