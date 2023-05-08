@@ -7,6 +7,7 @@ import SimulationResultView from "./components/SimulationResultView";
 import TimescaleInput from "./components/TimescaleInput";
 import { SimulationResult } from "./models";
 import StrategyView from "./components/StrategyView";
+import Footer from "./components/Footer";
 
 const App: React.FC = () => {
   const [simulationResult, setSimulationResult] = useState<SimulationResult>({
@@ -34,7 +35,7 @@ const App: React.FC = () => {
   showCyclesRef.current = showCycles;
 
   return (
-    <div className="App min-h-screen w-full bg-gray-100 flex justify-center">
+    <div className="App min-h-screen w-full bg-gray-100 flex flex-col items-center pt-8">
       <div className="bg-white p-6 shadow-lg max-w-6xl">
         <h1 className="text-center text-4xl font-semibold text-gray-900 mb-4">
           100 Prisoners Problem
@@ -149,6 +150,7 @@ const App: React.FC = () => {
           <Canvas title="Freedom" canvasRef={freeCanvasRef} />
         </div>
       </div>
+      <Footer className="flex-1 min-h-[4rem]" />
     </div>
   );
 };
