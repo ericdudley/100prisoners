@@ -1,13 +1,15 @@
 export default function Canvas({
   title,
   canvasRef,
+  textRef,
 }: {
   title: string;
   canvasRef: React.RefObject<HTMLCanvasElement>;
+  textRef?: React.RefObject<HTMLParagraphElement>;
 }) {
   return (
     <div>
-      <h2 className="text-center text-3xl font-semibold text-gray-900 mb-4">
+      <h2 className="text-center text-3xl font-semibold text-gray-900 mb-1">
         {title}
       </h2>
       <canvas
@@ -16,6 +18,7 @@ export default function Canvas({
         width={300}
         height={300}
       />
+      <p ref={textRef} className="whitespace-break-spaces max-w-[300px] text-gray-700"></p>
     </div>
   );
 }

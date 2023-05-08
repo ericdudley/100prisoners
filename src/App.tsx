@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import "./App.css";
-import { Simulation, runSimulation } from "./Simulation";
+import { Simulation } from "./Simulation";
 import Canvas from "./components/Canvas";
 import Footer from "./components/Footer";
 import Settings from "./components/Settings";
@@ -18,8 +18,11 @@ const App: React.FC = () => {
   const isRunningRef = useRef(false);
 
   const prisonCanvasRef = useRef<HTMLCanvasElement>(null);
+  const prisonTextRef = useRef<HTMLParagraphElement>(null);
   const lookingCanvasRef = useRef<HTMLCanvasElement>(null);
+  const lookingTextRef = useRef<HTMLParagraphElement>(null);
   const freeCanvasRef = useRef<HTMLCanvasElement>(null);
+  const freeTextRef = useRef<HTMLParagraphElement>(null);
   const simulationRef = useRef<Simulation | null>();
 
   const [timescale, setTimescale] = useState(1);
@@ -39,7 +42,7 @@ const App: React.FC = () => {
 
   return (
     <div className="App min-h-screen w-full bg-gray-100 flex flex-col items-center pt-8">
-      <div className="bg-white p-6 shadow-lg max-w-6xl">
+      <div className="bg-white p-6 shadow-lg max-w-6xl px-12">
         <h1 className="text-center text-4xl font-semibold text-gray-900 mb-4">
           100 Prisoners Problem
         </h1>
@@ -60,10 +63,6 @@ const App: React.FC = () => {
         >
           Read more on Wikipedia
         </a>
-        <SimulationResultView
-          simulationResult={simulationResult}
-          className="mt-4"
-        />
         <Settings
           className="mt-4"
           onStart={async (strategy, prisonerCount) => {
@@ -77,12 +76,15 @@ const App: React.FC = () => {
             });
 
             while (isRunningRef.current) {
-              const { result, simulation } = runSimulation(
+              const simulation = new Simulation(
                 prisonerCount,
                 strategy,
                 prisonCanvasRef.current!,
+                prisonTextRef.current!,
                 lookingCanvasRef.current!,
+                lookingTextRef.current!,
                 freeCanvasRef.current!,
+                freeTextRef.current!,
                 timescaleRef,
                 groupByCyclesRef,
                 colorByCyclesRef
@@ -91,7 +93,7 @@ const App: React.FC = () => {
               if (isPausedRef.current) {
                 simulationRef.current.pause();
               }
-              const success = await result;
+              const success = await simulation.run();
               if (success != null) {
                 setSimulationResult((prev) => {
                   const updatedResult = {
@@ -123,51 +125,73 @@ const App: React.FC = () => {
             simulationRef.current = null;
           }}
         />
-        <div className="px-8">
-          <TimescaleInput
-            value={timescale}
-            onChange={(value) => {
-              setTimescale(value);
-            }}
-            valueLabel={`${transformedTimescale}`}
-          />
-          <div className="mt-4 flex flex-row items-center gap-2">
-            <input
-              type="checkbox"
-              id="group-by-cycles"
-              checked={groupByCycles}
-              onChange={(e) => {
-                setGroupByCycles(e.target.checked);
-                groupByCyclesRef.current = e.target.checked;
-
-                if (simulationRef.current != null) {
-                  simulationRef.current.draw();
-                }
-              }}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex-1">
+            <SimulationResultView
+              simulationResult={simulationResult}
+              className="mt-4"
             />
-            <label htmlFor="group-by-cycles">Group by cycles</label>
           </div>
-          <div className="mt-4 flex flex-row items-center gap-2">
-            <input
-              type="checkbox"
-              id="color-by-cycles"
-              checked={colorByCycles}
-              onChange={(e) => {
-                setColorByCycles(e.target.checked);
-                colorByCyclesRef.current = e.target.checked;
-
-                if (simulationRef.current != null) {
-                  simulationRef.current.draw();
-                }
+          <div className="flex flex-col gap-2 max-w-md">
+            <TimescaleInput
+              value={timescale}
+              onChange={(value) => {
+                setTimescale(value);
               }}
+              valueLabel={`${transformedTimescale}`}
             />
-            <label htmlFor="color-by-cycles">Color by cycles</label>
+            <div className="flex gap-4 items-center flex-wrap flex-1">
+              <div className="mt-4 flex flex-row items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="group-by-cycles"
+                  checked={groupByCycles}
+                  onChange={(e) => {
+                    setGroupByCycles(e.target.checked);
+                    groupByCyclesRef.current = e.target.checked;
+
+                    if (simulationRef.current != null) {
+                      simulationRef.current.draw();
+                    }
+                  }}
+                />
+                <label htmlFor="group-by-cycles">Group by cycles</label>
+              </div>
+              <div className="mt-4 flex flex-row items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="color-by-cycles"
+                  checked={colorByCycles}
+                  onChange={(e) => {
+                    setColorByCycles(e.target.checked);
+                    colorByCyclesRef.current = e.target.checked;
+
+                    if (simulationRef.current != null) {
+                      simulationRef.current.draw();
+                    }
+                  }}
+                />
+                <label htmlFor="color-by-cycles">Color by cycles</label>
+              </div>
+            </div>
           </div>
         </div>
         <div className="mt-4 w-full mx-auto flex flex-row gap-2 justify-evenly flex-wrap">
-          <Canvas title="Prison" canvasRef={prisonCanvasRef} />
-          <Canvas title="Cupboard" canvasRef={lookingCanvasRef} />
-          <Canvas title="Freedom" canvasRef={freeCanvasRef} />
+          <Canvas
+            title="Prison"
+            canvasRef={prisonCanvasRef}
+            textRef={prisonTextRef}
+          />
+          <Canvas
+            title="Cupboard"
+            canvasRef={lookingCanvasRef}
+            textRef={lookingTextRef}
+          />
+          <Canvas
+            title="Freedom"
+            canvasRef={freeCanvasRef}
+            textRef={freeTextRef}
+          />
         </div>
       </div>
       <Footer className="flex-1 min-h-[4rem]" />

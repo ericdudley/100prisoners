@@ -52,6 +52,7 @@ export default function Settings({
 
   return (
     <div className={cx("flex flex-col gap-2", className)}>
+      <StrategyView strategy={strategy} />
       <div className="flex items-center gap-4 mt-8 flex-wrap">
         <div className="flex flex-col relative w-32">
           <label
@@ -168,8 +169,6 @@ export default function Settings({
           ? "Simulation is running, click reset to change these settings."
           : "Click start to run the simulation with these settings."}
       </p>
-
-      <StrategyView strategy={strategy} />
     </div>
   );
 }

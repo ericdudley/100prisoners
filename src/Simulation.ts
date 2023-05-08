@@ -17,10 +17,13 @@ function clearCtx(ctx: CanvasRenderingContext2D) {
 export class Simulation {
   private prisonCanvas: HTMLCanvasElement;
   private prisonCtx: CanvasRenderingContext2D;
+  private prisonText: HTMLParagraphElement;
   private lookingCanvas: HTMLCanvasElement;
   private lookingCtx: CanvasRenderingContext2D;
+  private lookingText: HTMLParagraphElement;
   private freeCanvas: HTMLCanvasElement;
   private freeCtx: CanvasRenderingContext2D;
+  private freeText: HTMLParagraphElement;
 
   private timeoutId: number | undefined;
   private isPaused: boolean = false;
@@ -42,18 +45,24 @@ export class Simulation {
     numPrisoners: number,
     strategy: Strategy,
     prisonCanvas: HTMLCanvasElement,
+    prisonText: HTMLParagraphElement,
     lookingCanvas: HTMLCanvasElement,
+    lookingText: HTMLParagraphElement,
     freeCanvas: HTMLCanvasElement,
+    freeText: HTMLParagraphElement,
     timescaleRef: RefObject<number>,
     groupByCyclesRef: RefObject<boolean>,
     colorByCyclesRef: RefObject<boolean>
   ) {
     this.prisonCanvas = prisonCanvas;
     this.prisonCtx = prisonCanvas.getContext("2d")!;
+    this.prisonText = prisonText;
     this.lookingCanvas = lookingCanvas;
     this.lookingCtx = lookingCanvas.getContext("2d")!;
+    this.lookingText = lookingText;
     this.freeCanvas = freeCanvas;
     this.freeCtx = freeCanvas.getContext("2d")!;
+    this.freeText = freeText;
 
     this.timeoutId = undefined;
     this.tickMsRef = timescaleRef;
@@ -130,15 +139,6 @@ export class Simulation {
 
     clearCtx(this.prisonCtx);
 
-    // Draw room
-    this.prisonCtx.strokeStyle = "black";
-    this.prisonCtx.strokeRect(
-      0,
-      0,
-      this.prisonCanvas.width,
-      this.prisonCanvas.height
-    );
-
     const {
       gridSize,
       boxWidth,
@@ -149,26 +149,30 @@ export class Simulation {
       prisonerOffsetY,
     } = this.getSize(this.prisonCanvas);
 
-    // Draw prisoners
-    this.prisoners
-      .filter((prisoner) => prisoner.status === "prison")
-      .forEach((prisoner) => {
-        const { row, col } = this.getGridPosition(prisoner.id, gridSize);
-        const x = col * boxWidth;
-        const y = row * boxHeight;
+    const imprisonedPrisoners = this.prisoners.filter(
+      (prisoner) => prisoner.status === "prison"
+    );
 
-        this.prisonCtx.drawImage(
-          IMG_PRISONER_PRISON,
-          0,
-          0,
-          IMG_PRISONER_PRISON.width,
-          IMG_PRISONER_PRISON.height,
-          x + prisonerOffsetX,
-          y + prisonerOffsetY,
-          prisonerWidth,
-          prisonerHeight
-        );
-      });
+    this.prisonText.innerText = `${imprisonedPrisoners.length} waiting in prison for their turn.`;
+
+    // Draw prisoners
+    imprisonedPrisoners.forEach((prisoner) => {
+      const { row, col } = this.getGridPosition(prisoner.id, gridSize);
+      const x = col * boxWidth;
+      const y = row * boxHeight;
+
+      this.prisonCtx.drawImage(
+        IMG_PRISONER_PRISON,
+        0,
+        0,
+        IMG_PRISONER_PRISON.width,
+        IMG_PRISONER_PRISON.height,
+        x + prisonerOffsetX,
+        y + prisonerOffsetY,
+        prisonerWidth,
+        prisonerHeight
+      );
+    });
   }
 
   private drawLookingCanvas() {
@@ -177,15 +181,6 @@ export class Simulation {
     }
 
     clearCtx(this.lookingCtx);
-
-    // Draw room
-    this.lookingCtx.strokeStyle = "black";
-    this.lookingCtx.strokeRect(
-      0,
-      0,
-      this.lookingCanvas.width,
-      this.lookingCanvas.height
-    );
 
     const {
       gridSize,
@@ -227,7 +222,7 @@ export class Simulation {
         y,
         boxWidth,
         boxHeight,
-        box.number
+        box.isSeen ? box.number : box.id
       );
     });
 
@@ -241,6 +236,26 @@ export class Simulation {
             ? prisoner.seenBoxes.length - GHOST_LENGTH
             : 0
         );
+
+        if (drawPositions.length === 0) {
+          this.lookingText.innerText = `Prisoner ${
+            prisoner.id + 1
+          } has started looking.`;
+        } else if (
+          drawPositions[drawPositions.length - 1].number === prisoner.id
+        ) {
+          this.lookingText.innerText = `Prisoner ${
+            prisoner.id + 1
+          } has found their number!`;
+        } else {
+          this.lookingText.innerText = `Prisoner ${prisoner.id + 1} has seen ${
+            prisoner.seenBoxes.length
+          } drawer${
+            prisoner.seenBoxes.length === 1 ? "" : "s"
+          } and is looking at drawer ${
+            drawPositions[drawPositions.length - 1]?.id + 1
+          }.`;
+        }
 
         drawPositions.forEach((box, seenIdx) => {
           const { cycleBoxId } = this.boxCycles[box.id];
@@ -282,15 +297,6 @@ export class Simulation {
 
     clearCtx(this.freeCtx);
 
-    // Draw room
-    this.freeCtx.strokeStyle = "black";
-    this.freeCtx.strokeRect(
-      0,
-      0,
-      this.freeCanvas.width,
-      this.freeCanvas.height
-    );
-
     const {
       gridSize,
       boxWidth,
@@ -301,26 +307,30 @@ export class Simulation {
       prisonerOffsetY,
     } = this.getSize(this.freeCanvas);
 
-    // Draw prisoners
-    this.prisoners
-      .filter((prisoner) => prisoner.status === "free")
-      .forEach((prisoner) => {
-        const { row, col } = this.getGridPosition(prisoner.id, gridSize);
-        const x = col * boxWidth;
-        const y = row * boxHeight;
+    const freePrisoners = this.prisoners.filter(
+      (prisoner) => prisoner.status === "free"
+    );
 
-        this.freeCtx.drawImage(
-          IMG_PRISONER_FREE,
-          0,
-          0,
-          IMG_PRISONER_FREE.width,
-          IMG_PRISONER_FREE.height,
-          x + prisonerOffsetX,
-          y + prisonerOffsetY,
-          prisonerWidth,
-          prisonerHeight
-        );
-      });
+    this.freeText.innerText = `${freePrisoners.length} of ${this.prisoners.length} prisoners have been freed.`;
+
+    // Draw prisoners
+    freePrisoners.forEach((prisoner) => {
+      const { row, col } = this.getGridPosition(prisoner.id, gridSize);
+      const x = col * boxWidth;
+      const y = row * boxHeight;
+
+      this.freeCtx.drawImage(
+        IMG_PRISONER_FREE,
+        0,
+        0,
+        IMG_PRISONER_FREE.width,
+        IMG_PRISONER_FREE.height,
+        x + prisonerOffsetX,
+        y + prisonerOffsetY,
+        prisonerWidth,
+        prisonerHeight
+      );
+    });
   }
 
   public draw() {
@@ -428,6 +438,9 @@ export class Simulation {
   public pause() {
     clearTimeout(this.timeoutId);
     this.isPaused = true;
+    setTimeout(() => {
+      this.draw();
+    }, 0);
   }
 
   public cancel() {
@@ -437,6 +450,10 @@ export class Simulation {
     clearCtx(this.prisonCtx);
     clearCtx(this.lookingCtx);
     clearCtx(this.freeCtx);
+
+    this.prisonText.innerText = "";
+    this.lookingText.innerText = "";
+    this.freeText.innerText = "";
   }
 
   public step() {
@@ -452,29 +469,3 @@ export class Simulation {
     });
   }
 }
-
-export const runSimulation = (
-  numPrisoners: number,
-  strategy: Strategy,
-  prisonCanvas: HTMLCanvasElement,
-  lookingCanvas: HTMLCanvasElement,
-  freeCanvas: HTMLCanvasElement,
-  tickMsRef: RefObject<number>,
-  groupByCyclesRef: RefObject<boolean>,
-  colorByCyclesRef: RefObject<boolean>
-): { result: Promise<boolean | null | undefined>; simulation: Simulation } => {
-  const simulation = new Simulation(
-    numPrisoners,
-    strategy,
-    prisonCanvas,
-    lookingCanvas,
-    freeCanvas,
-    tickMsRef,
-    groupByCyclesRef,
-    colorByCyclesRef
-  );
-  return {
-    result: simulation.run(),
-    simulation,
-  };
-};
