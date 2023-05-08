@@ -27,7 +27,8 @@ export class Simulation {
   private isCancelled: boolean = false;
   private isStepping: boolean = false;
   private tickMsRef: RefObject<number>;
-  private showCyclesRef: RefObject<boolean>;
+  private groupByCyclesRef: RefObject<boolean>;
+  private colorByCyclesRef: RefObject<boolean>;
 
   private strategy: Strategy;
   private prisoners: Prisoner[];
@@ -44,7 +45,8 @@ export class Simulation {
     lookingCanvas: HTMLCanvasElement,
     freeCanvas: HTMLCanvasElement,
     timescaleRef: RefObject<number>,
-    showCyclesRef: RefObject<boolean>
+    groupByCyclesRef: RefObject<boolean>,
+    colorByCyclesRef: RefObject<boolean>
   ) {
     this.prisonCanvas = prisonCanvas;
     this.prisonCtx = prisonCanvas.getContext("2d")!;
@@ -55,7 +57,8 @@ export class Simulation {
 
     this.timeoutId = undefined;
     this.tickMsRef = timescaleRef;
-    this.showCyclesRef = showCyclesRef;
+    this.groupByCyclesRef = groupByCyclesRef;
+    this.colorByCyclesRef = colorByCyclesRef;
 
     this.strategy = strategy;
 
@@ -198,7 +201,7 @@ export class Simulation {
     this.boxes.forEach((box) => {
       const { cycleColor, cycleBoxId } = this.boxCycles[box.id];
       const { row, col } = this.getGridPosition(
-        this.showCyclesRef.current ? cycleBoxId : box.id,
+        this.groupByCyclesRef.current ? cycleBoxId : box.id,
         gridSize
       );
       const x = col * boxWidth;
@@ -206,7 +209,7 @@ export class Simulation {
 
       const fillStyle = box.isSeen
         ? "#321900"
-        : this.showCyclesRef.current
+        : this.colorByCyclesRef.current
         ? cycleColor
         : CYCLE_ID_TO_COLOR[0];
 
@@ -242,7 +245,7 @@ export class Simulation {
 
           // Render prisoner on top of the box
           const boxPosition = this.getGridPosition(
-            this.showCyclesRef.current ? cycleBoxId : box.id,
+            this.groupByCyclesRef.current ? cycleBoxId : box.id,
             gridSize
           );
           const boxX = boxPosition.col * boxWidth;
@@ -455,7 +458,8 @@ export const runSimulation = (
   lookingCanvas: HTMLCanvasElement,
   freeCanvas: HTMLCanvasElement,
   tickMsRef: RefObject<number>,
-  showCyclesRef: RefObject<boolean>
+  groupByCyclesRef: RefObject<boolean>,
+  colorByCyclesRef: RefObject<boolean>
 ): { result: Promise<boolean | null | undefined>; simulation: Simulation } => {
   const simulation = new Simulation(
     numPrisoners,
@@ -464,7 +468,8 @@ export const runSimulation = (
     lookingCanvas,
     freeCanvas,
     tickMsRef,
-    showCyclesRef
+    groupByCyclesRef,
+    colorByCyclesRef
   );
   return {
     result: simulation.run(),

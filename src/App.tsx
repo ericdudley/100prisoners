@@ -29,9 +29,13 @@ const App: React.FC = () => {
     flooredTimescale > 0 && flooredTimescale < 10 ? 1 : flooredTimescale;
   timescaleRef.current = transformedTimescale;
 
-  const [showCycles, setShowCycles] = useState(false);
-  const showCyclesRef = useRef(showCycles);
-  showCyclesRef.current = showCycles;
+  const [groupByCycles, setGroupByCycles] = useState(false);
+  const groupByCyclesRef = useRef(groupByCycles);
+  groupByCyclesRef.current = groupByCycles;
+
+  const [colorByCycles, setColorByCycles] = useState(false);
+  const colorByCyclesRef = useRef(colorByCycles);
+  colorByCyclesRef.current = colorByCycles;
 
   return (
     <div className="App min-h-screen w-full bg-gray-100 flex flex-col items-center pt-8">
@@ -80,7 +84,8 @@ const App: React.FC = () => {
                 lookingCanvasRef.current!,
                 freeCanvasRef.current!,
                 timescaleRef,
-                showCyclesRef
+                groupByCyclesRef,
+                colorByCyclesRef
               );
               simulationRef.current = simulation;
               if (isPausedRef.current) {
@@ -126,28 +131,37 @@ const App: React.FC = () => {
             }}
             valueLabel={`${transformedTimescale}`}
           />
-          <div className="flex flex-col gap-2">
-            <div className="mt-4 flex flex-row items-center gap-2">
-              <input
-                type="checkbox"
-                id="show-cycles"
-                checked={showCycles}
-                onChange={(e) => {
-                  setShowCycles(e.target.checked);
-                  showCyclesRef.current = e.target.checked;
+          <div className="mt-4 flex flex-row items-center gap-2">
+            <input
+              type="checkbox"
+              id="group-by-cycles"
+              checked={groupByCycles}
+              onChange={(e) => {
+                setGroupByCycles(e.target.checked);
+                groupByCyclesRef.current = e.target.checked;
 
-                  if (simulationRef.current != null) {
-                    simulationRef.current.draw();
-                  }
-                }}
-              />
-              <label htmlFor="show-cycles">Show cycles</label>
-            </div>
-            <p className="text-gray-700 text-sm">
-              Draw the drawers grouped by cycles. If prisoners use the Optimal
-              strategy, they will only fail if there is a cycle longer than the
-              number of drawers they are allowed to search.
-            </p>
+                if (simulationRef.current != null) {
+                  simulationRef.current.draw();
+                }
+              }}
+            />
+            <label htmlFor="group-by-cycles">Group by cycles</label>
+          </div>
+          <div className="mt-4 flex flex-row items-center gap-2">
+            <input
+              type="checkbox"
+              id="color-by-cycles"
+              checked={colorByCycles}
+              onChange={(e) => {
+                setColorByCycles(e.target.checked);
+                colorByCyclesRef.current = e.target.checked;
+
+                if (simulationRef.current != null) {
+                  simulationRef.current.draw();
+                }
+              }}
+            />
+            <label htmlFor="color-by-cycles">Color by cycles</label>
           </div>
         </div>
         <div className="mt-4 w-full mx-auto flex flex-row gap-2 justify-evenly flex-wrap">
