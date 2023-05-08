@@ -2,12 +2,11 @@ import React, { useRef, useState } from "react";
 import "./App.css";
 import { Simulation, runSimulation } from "./Simulation";
 import Canvas from "./components/Canvas";
+import Footer from "./components/Footer";
 import Settings from "./components/Settings";
 import SimulationResultView from "./components/SimulationResultView";
 import TimescaleInput from "./components/TimescaleInput";
 import { SimulationResult } from "./models";
-import StrategyView from "./components/StrategyView";
-import Footer from "./components/Footer";
 
 const App: React.FC = () => {
   const [simulationResult, setSimulationResult] = useState<SimulationResult>({
