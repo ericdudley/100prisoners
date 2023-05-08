@@ -1,3 +1,5 @@
+import React from "react";
+
 export interface SimulationResult {
   success: number;
   failure: number;
@@ -7,7 +9,7 @@ export interface SimulationResult {
 export interface Strategy {
   label: string;
   value: "random" | "optimal";
-  description: string;
+  description: React.ReactElement;
 }
 
 export class Box {

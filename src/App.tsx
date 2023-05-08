@@ -6,6 +6,7 @@ import Settings from "./components/Settings";
 import SimulationResultView from "./components/SimulationResultView";
 import TimescaleInput from "./components/TimescaleInput";
 import { SimulationResult } from "./models";
+import StrategyView from "./components/StrategyView";
 
 const App: React.FC = () => {
   const [simulationResult, setSimulationResult] = useState<SimulationResult>({
@@ -112,9 +113,7 @@ const App: React.FC = () => {
             simulationRef.current = null;
           }}
         />
-
         <TimescaleInput
-          className="mt-4"
           value={timescale}
           onChange={(value) => {
             setTimescale(value);

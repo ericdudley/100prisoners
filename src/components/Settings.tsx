@@ -4,6 +4,7 @@ import { FaPause, FaPlay, FaStepForward } from "react-icons/fa";
 import { MAX_PRISONERS } from "../constants";
 import { Strategy } from "../models";
 import { STRATEGY_OPTIONS } from "../strategies";
+import StrategyView from "./StrategyView";
 
 export default function Settings({
   onPause,
@@ -167,6 +168,8 @@ export default function Settings({
           ? "Simulation is running, click reset to change these settings."
           : "Click start to run the simulation with these settings."}
       </p>
+
+      <StrategyView strategy={strategy} />
     </div>
   );
 }
