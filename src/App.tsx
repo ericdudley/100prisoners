@@ -67,6 +67,11 @@ const App: React.FC = () => {
             isRunningRef.current = true;
             isPausedRef.current = false;
 
+            window.scrollTo({
+              top: lookingCanvasRef.current!.offsetTop,
+              behavior: "smooth",
+            });
+
             while (isRunningRef.current) {
               const { result, simulation } = runSimulation(
                 prisonerCount,
@@ -113,35 +118,37 @@ const App: React.FC = () => {
             simulationRef.current = null;
           }}
         />
-        <TimescaleInput
-          value={timescale}
-          onChange={(value) => {
-            setTimescale(value);
-          }}
-          valueLabel={`${transformedTimescale}`}
-        />
-        <div className="flex flex-col gap-2">
-          <div className="mt-4 flex flex-row items-center gap-2">
-            <input
-              type="checkbox"
-              id="show-cycles"
-              checked={showCycles}
-              onChange={(e) => {
-                setShowCycles(e.target.checked);
-                showCyclesRef.current = e.target.checked;
+        <div className="px-8">
+          <TimescaleInput
+            value={timescale}
+            onChange={(value) => {
+              setTimescale(value);
+            }}
+            valueLabel={`${transformedTimescale}`}
+          />
+          <div className="flex flex-col gap-2">
+            <div className="mt-4 flex flex-row items-center gap-2">
+              <input
+                type="checkbox"
+                id="show-cycles"
+                checked={showCycles}
+                onChange={(e) => {
+                  setShowCycles(e.target.checked);
+                  showCyclesRef.current = e.target.checked;
 
-                if (simulationRef.current != null) {
-                  simulationRef.current.draw();
-                }
-              }}
-            />
-            <label htmlFor="show-cycles">Show cycles</label>
+                  if (simulationRef.current != null) {
+                    simulationRef.current.draw();
+                  }
+                }}
+              />
+              <label htmlFor="show-cycles">Show cycles</label>
+            </div>
+            <p className="text-gray-700 text-sm">
+              Draw the drawers grouped by cycles. If prisoners use the Optimal
+              strategy, they will only fail if there is a cycle longer than the
+              number of drawers they are allowed to search.
+            </p>
           </div>
-          <p className="text-gray-700 text-sm">
-            Draw the drawers grouped by cycles. If prisoners use the Optimal
-            strategy, they will only fail if there is a cycle longer than the
-            number of drawers they are allowed to search.
-          </p>
         </div>
         <div className="mt-4 w-full mx-auto flex flex-row gap-2 justify-evenly flex-wrap">
           <Canvas title="Prison" canvasRef={prisonCanvasRef} />
