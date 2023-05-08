@@ -207,11 +207,13 @@ export class Simulation {
       const x = col * boxWidth;
       const y = row * boxHeight;
 
-      const fillStyle = box.isSeen
-        ? "#321900"
-        : this.colorByCyclesRef.current
-        ? cycleColor
-        : CYCLE_ID_TO_COLOR[0];
+      const fillStyle = this.colorByCyclesRef.current
+        ? box.isSeen
+          ? cycleColor.dark
+          : cycleColor.light
+        : box.isSeen
+        ? CYCLE_ID_TO_COLOR[0].dark
+        : CYCLE_ID_TO_COLOR[0].light;
 
       this.lookingCtx.fillStyle = fillStyle;
       this.lookingCtx.strokeStyle = "black";

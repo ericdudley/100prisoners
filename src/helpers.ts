@@ -3,7 +3,10 @@ import { Box } from "./models";
 
 export type BoxCycles = {
   [key: number]: {
-    cycleColor: string;
+    cycleColor: {
+      light: string;
+      dark: string;
+    };
     cycleBoxId: number;
   };
 };
@@ -68,6 +71,9 @@ export function getBoxCycles(boxes: Box[]): BoxCycles {
   }, {} as BoxCycles);
 }
 
-export function getCycleColor(cycleId: number): string {
+export function getCycleColor(cycleId: number): {
+  light: string;
+  dark: string;
+} {
   return CYCLE_ID_TO_COLOR[cycleId % CYCLE_ID_TO_COLOR.length];
 }
